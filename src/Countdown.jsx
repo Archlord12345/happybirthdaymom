@@ -10,8 +10,14 @@ const Countdown = ({ targetDate }) => {
 
     useEffect(() => {
         const timer = setInterval(() => {
-            const now = new Date().getTime();
-            const distance = new Date(targetDate).getTime() - now;
+            // Utiliser le fuseau horaire du Cameroun (Africa/Douala, UTC+1)
+            const nowCameroon = new Date(
+                new Date().toLocaleString('en-US', { timeZone: 'Africa/Douala' })
+            );
+
+            // Date cible : 28 février 2026 à minuit, heure du Cameroun
+            const target = new Date('2026-02-28T00:00:00');
+            const distance = target.getTime() - nowCameroon.getTime();
 
             if (distance < 0) {
                 clearInterval(timer);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import BirthdayScene from './BirthdayScene';
@@ -16,7 +16,7 @@ function App() {
     const duration = 4000;
     const end = Date.now() + duration;
 
-    const colors = ['#FFD700', '#C71585', '#FF69B4', '#FF1493', '#E040FB', '#ffffff'];
+    const colors = ['#FFD700', '#2980b9', '#1a5276', '#48c9b0', '#dce6ec', '#ffffff'];
 
     const frame = () => {
       confetti({

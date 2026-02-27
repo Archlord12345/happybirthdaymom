@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Music, Music2, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 
 const MusicPlayer = ({ autoPlayAfterInteract }) => {
@@ -14,22 +14,25 @@ const MusicPlayer = ({ autoPlayAfterInteract }) => {
     useEffect(() => {
         const loadMusicFiles = async () => {
             setIsLoading(true);
-            try {
-                // Essayer d'abord l'API du serveur
-                const response = await fetch('/api/music-files');
-                if (response.ok) {
-                    const files = await response.json();
-                    if (files.length > 0) {
-                        setTracks(files);
-                        setIsLoading(false);
-                        return;
+
+            // Try the server API only if not in dev mode (Vite)
+            if (!import.meta.env.DEV) {
+                try {
+                    const response = await fetch('/api/music-files');
+                    if (response.ok) {
+                        const files = await response.json();
+                        if (files.length > 0) {
+                            setTracks(files);
+                            setIsLoading(false);
+                            return;
+                        }
                     }
+                } catch (error) {
+                    // Server API not available, skip silently
                 }
-            } catch (error) {
-                console.log("API serveur non disponible, utilisation des imports statiques");
             }
 
-            // Fallback: charger les fichiers statiquement
+            // Fallback: charger les fichiers statiquement via Vite glob
             try {
                 const modules = import.meta.glob('/src/music/*.mp3', { eager: true });
                 const musicTracks = Object.entries(modules).map(([path, module]) => {
@@ -40,24 +43,23 @@ const MusicPlayer = ({ autoPlayAfterInteract }) => {
                         url: module.default || path
                     };
                 });
-                
+
                 if (musicTracks.length > 0) {
                     setTracks(musicTracks);
                 } else {
-                    // Fallback final: utiliser les fichiers connus
+                    // Fallback final: use song.mp3 from public folder
                     setTracks([{
                         name: 'HAPPY BIRTHDAY SONG',
-                        path: '/music/happybirthdaysong.mp3',
-                        url: '/music/happybirthdaysong.mp3'
+                        path: '/song.mp3',
+                        url: '/song.mp3'
                     }]);
                 }
             } catch (error) {
                 console.error("Erreur lors du chargement des musiques:", error);
-                // Fallback ultime
                 setTracks([{
                     name: 'HAPPY BIRTHDAY SONG',
-                    path: '/music/happybirthdaysong.mp3',
-                    url: '/music/happybirthdaysong.mp3'
+                    path: '/song.mp3',
+                    url: '/song.mp3'
                 }]);
             }
             setIsLoading(false);
@@ -73,7 +75,7 @@ const MusicPlayer = ({ autoPlayAfterInteract }) => {
             const trackUrl = track.url || track.path;
             audioRef.current.src = trackUrl;
             audioRef.current.volume = volume;
-            
+
             if (isPlaying) {
                 audioRef.current.play().catch(err => {
                     console.log("Lecture impossible:", err);
@@ -81,6 +83,7 @@ const MusicPlayer = ({ autoPlayAfterInteract }) => {
                 });
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentTrackIndex, tracks]);
 
     // Autoplay après interaction
@@ -98,7 +101,7 @@ const MusicPlayer = ({ autoPlayAfterInteract }) => {
         }
     }, [autoPlayAfterInteract, tracks]);
 
-    const toggleMusic = () => {
+    const toggleMusic = useCallback(() => {
         if (!audioRef.current || tracks.length === 0) return;
 
         if (isPlaying) {
@@ -111,23 +114,23 @@ const MusicPlayer = ({ autoPlayAfterInteract }) => {
             });
             setIsPlaying(true);
         }
-    };
+    }, [isPlaying, tracks.length]);
 
-    const nextTrack = () => {
+    const nextTrack = useCallback(() => {
         if (tracks.length > 0) {
             const newIndex = (currentTrackIndex + 1) % tracks.length;
             setCurrentTrackIndex(newIndex);
             setIsPlaying(true);
         }
-    };
+    }, [currentTrackIndex, tracks.length]);
 
-    const prevTrack = () => {
+    const prevTrack = useCallback(() => {
         if (tracks.length > 0) {
             const newIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
             setCurrentTrackIndex(newIndex);
             setIsPlaying(true);
         }
-    };
+    }, [currentTrackIndex, tracks.length]);
 
     const handleVolumeChange = (e) => {
         const newVolume = parseFloat(e.target.value);
@@ -138,22 +141,20 @@ const MusicPlayer = ({ autoPlayAfterInteract }) => {
     };
 
     const handleTrackEnd = () => {
-        // Passer automatiquement à la piste suivante
         nextTrack();
     };
 
-    const trackName = tracks.length > 0 
+    const trackName = tracks.length > 0
         ? tracks[currentTrackIndex].name
         : (isLoading ? 'Chargement...' : 'Aucune musique');
 
     return (
         <>
-            <audio 
+            <audio
                 ref={audioRef}
                 onEnded={handleTrackEnd}
-                crossOrigin="anonymous"
             />
-            
+
             <div className="music-player-container">
                 {/* Affichage de la piste actuelle */}
                 {tracks.length > 0 && (
